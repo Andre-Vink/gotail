@@ -7,6 +7,11 @@ import (
 	"path/filepath"
 )
 
+const (
+	TERM_BLUE   = "\x1b[1;34m"
+	TERM_NORMAL = "\x1b[0m"
+)
+
 /* All paths to tail. */
 var foldersToTail []string
 
@@ -72,7 +77,7 @@ func addFolderToTrace(folderPath string) {
 	for _, file := range files {
 		if !file.IsDir() {
 			tracedFiles[file.Name()] = uint64(file.Size())
-			fmt.Println("Adding file", file.Name(), "for tracing. It is currently", file.Size(), "long.")
+			fmt.Println("Adding file ", TERM_BLUE, file.Name(), TERM_NORMAL, "for tracing. It is currently", TERM_BLUE, file.Size(), TERM_NORMAL, "long.")
 		}
 	}
 }
