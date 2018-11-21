@@ -9,11 +9,10 @@ import (
 )
 
 const (
-	TermBlue   = "\x1b[1;34m"
-	TermNormal = "\x1b[0m"
+	termBlue   = "\x1b[1;34m"
+	termNormal = "\x1b[0m"
 )
 
-/* All paths to tail. */
 var tailFolders = make(map[string]TailFolder)
 
 func main() {
@@ -54,7 +53,7 @@ func addTailFolder(folderPath string) {
 	if _, exists := tailFolders[folderPath]; exists {
 		fmt.Printf("gotail INFO: Folder [%v] will only be tailed once!\n", folderPath)
 	} else {
-		tailFolder := Create(folderPath)
+		tailFolder := NewTailFolder(folderPath)
 		tailFolders[folderPath] = tailFolder
 	}
 }
