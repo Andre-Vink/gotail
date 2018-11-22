@@ -15,7 +15,7 @@ type TailFolder struct {
 // The path should point to a directory, otherwise a panic will occur.
 func NewTailFolder(path string) TailFolder {
 	dir := TailFolder{AbsolutePath: path, Files: make(map[string]uint64)}
-	go dir.readFiles()
+	dir.readFiles()
 	return dir
 }
 
@@ -29,7 +29,7 @@ func (tailFolder TailFolder) String() string {
 	return tailFolder.AbsolutePath
 }
 
-func (tailFolder *TailFolder) readFiles() {
+func (tailFolder TailFolder) readFiles() {
 	folder, err := os.Open(tailFolder.AbsolutePath)
 	if err != nil {
 		panic("Cannot open folder")
@@ -47,4 +47,19 @@ func (tailFolder *TailFolder) readFiles() {
 				termBlue, tailFolder.Files[file.Name()], termNormal, "long.")
 		}
 	}
+}
+
+func (tailFolder TailFolder) AddFile(fileName string) (from uint64, to uint64) {
+	return 0, 0
+}
+
+// Positions returns the last echo'd position as from and the current size of the file in the to.
+// If the file is not found it will panic.
+func (tailFolder TailFolder) Positions(fileName string) (from uint64, to uint64) {
+	value, ok := tailFolder.Files[fileName]
+	if ok {
+		fmt.Printf("gotail TRACE: found file [%v] with position [%v]\n", fileName, value)
+		return value, 0
+	}
+	panic(fmt.Sprintf("Did not find file [%v]", fileName))
 }

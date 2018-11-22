@@ -49,7 +49,6 @@ func main() {
 }
 
 func addTailFolder(folderPath string) {
-	// TODO: only add when not already added (SET?)
 	if _, exists := tailFolders[folderPath]; exists {
 		fmt.Printf("gotail INFO: Folder [%v] will only be tailed once!\n", folderPath)
 	} else {
@@ -63,9 +62,40 @@ func watch(watcher *fsnotify.Watcher) {
 		var e fsnotify.Event
 		select {
 		case e = <-watcher.Events:
-			fmt.Printf("gotail INFO: Event: [%v] (name: %v, op: %v)\n", e, e.Name, e.Op)
+			handleWatchEvent(e)
 		case x := <-watcher.Errors:
 			fmt.Printf("gotail INFO: Error: [%v]\n", x)
 		}
 	}
+}
+
+func handleWatchEvent(event fsnotify.Event) {
+	fmt.Printf("gotail INFO: Event: [%v] (name: %v, op: %v)\n", event, event.Name, event.Op)
+	switch event.Op {
+	case fsnotify.Create:
+		handleNewFile(event.Name)
+	case fsnotify.Write:
+		handleWriteToFile(event.Name)
+	}
+}
+
+func handleNewFile(path string) {
+	tailFolder := findTailFolderForFile(path)
+	fileName := filepath.Base(path)
+	from, to := tailFolder.AddFile(fileName)
+	fmt.Printf("gotail INFO: Positions returned (%v, %v)\n", from, to)
+}
+
+func handleWriteToFile(path string) {
+	tailFolder := findTailFolderForFile(path)
+	fileName := filepath.Base(path)
+	from, to := tailFolder.Positions(fileName)
+	fmt.Printf("gotail INFO: Positions returned (%v, %v)\n", from, to)
+}
+
+func findTailFolderForFile(path string) TailFolder {
+	dir := filepath.Dir(path)
+	tailFolder := tailFolders[dir]
+	fmt.Printf("gotail INFO: Found tailfolder [%v]\n", tailFolder)
+	return tailFolder
 }
