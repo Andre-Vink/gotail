@@ -19,15 +19,23 @@ func NewTailFolders() TailFolders {
 	return TailFolders{files: make(map[string]uint64)}
 }
 
+// Folders returns all folders that are tailed or going to be tailed.
 func (tailFolders TailFolders) Folders() []string {
 	return tailFolders.folders
 }
 
+// AddFolder adds a folder for tailing.
 func (tailFolders *TailFolders) AddFolder(folder string) {
 	tailFolders.folders = append(tailFolders.folders, folder)
 	tailFolders.readFiles(folder)
 }
 
+// AddFile adds a file for tailing.
+func (tailFolders *TailFolders) AddFile(file string) {
+	tailFolders.files[file] = 0
+}
+
+// Watch starts watching the folders.
 func (tailFolders TailFolders) Watch() *fsnotify.Watcher {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -40,6 +48,27 @@ func (tailFolders TailFolders) Watch() *fsnotify.Watcher {
 	}
 
 	return watcher
+}
+
+// NewPart returns the new part of the file.
+func (tailFolders TailFolders) NewPart(fileName string) string {
+	lastPosition := tailFolders.files[fileName]
+	if fileInfo, err := os.Stat(fileName); err == nil {
+		currentFileSize := uint64(fileInfo.Size())
+		if currentFileSize < lastPosition { // fileName was truncated
+			lastPosition = 0
+		}
+		if file, err := os.Open(fileName); err == nil {
+			defer file.Close()
+			file.Seek(int64(lastPosition), 0)
+			bufferSize := currentFileSize - lastPosition
+			var buffer = make([]byte, bufferSize)
+			n, err := file.Read(buffer)
+			fmt.Println("Read file [", fileName, "] returned", n, "bytes and error", err)
+			return string(buffer)
+		}
+	}
+	return ""
 }
 
 // Path returns the absolute path to folder.

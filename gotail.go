@@ -73,14 +73,14 @@ func handleWatchEvent(event fsnotify.Event) {
 
 func handleNewFile(newFile string) {
 	fmt.Println("Handle new file: ", newFile)
-	//tailFolder := findTailFolderForFile(path)
-	//fileName := filepath.Base(path)
-	//from, to := tailFolder.AddFile(fileName)
-	//fmt.Printf("gotail INFO: Positions returned (%v, %v)\n", from, to)
+	tailFolders.AddFile(newFile)
 }
 
 func handleWriteToFile(writtenFile string) {
 	fmt.Println("Handle write to file: ", writtenFile)
+	newPart := tailFolders.NewPart(writtenFile)
+	fmt.Printf("NewPart returned [%v]\n", newPart)
+
 	//	tailFolder := findTailFolderForFile(path)
 	//	fileName := filepath.Base(path)
 	//	from, to := tailFolder.Positions(fileName)
