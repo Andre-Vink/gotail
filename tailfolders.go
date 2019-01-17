@@ -36,18 +36,16 @@ func (tailFolders *TailFolders) AddFile(file string) {
 }
 
 // Watch starts watching the folders.
-func (tailFolders TailFolders) Watch() *fsnotify.Watcher {
+func (tailFolders TailFolders) Watch() (*fsnotify.Watcher, error) {
 	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		fmt.Printf("gotail ERROR: Cannot create watcher. Aborting. Error: [%v]", err)
-		//return nil
+	if err == nil {
+		for _, folder := range tailFolders.folders {
+			// Add folder for watching. If this fails just continue with the next folder. The error is ignored.
+			_ = watcher.Add(folder)
+		}
 	}
 
-	for _, folder := range tailFolders.folders {
-		watcher.Add(folder)
-	}
-
-	return watcher
+	return watcher, err
 }
 
 // NewPart returns the new part of the file.
@@ -55,31 +53,26 @@ func (tailFolders TailFolders) NewPart(fileName string) string {
 	lastPosition := tailFolders.files[fileName]
 	if fileInfo, err := os.Stat(fileName); err == nil {
 		currentFileSize := uint64(fileInfo.Size())
-		if currentFileSize < lastPosition { // fileName was truncated
+		fmt.Printf("File [%v], last size [%v], current size [%v]\n", fileName, lastPosition, currentFileSize)
+		if currentFileSize < lastPosition { // file was truncated
 			lastPosition = 0
+			tailFolders.files[fileName] = 0
 		}
 		if file, err := os.Open(fileName); err == nil {
-			defer file.Close()
-			file.Seek(int64(lastPosition), 0)
-			bufferSize := currentFileSize - lastPosition
-			var buffer = make([]byte, bufferSize)
-			n, err := file.Read(buffer)
-			fmt.Println("Read file [", fileName, "] returned", n, "bytes and error", err)
-			return string(buffer)
+			defer func() { _ = file.Close() }()
+			_, err := file.Seek(int64(lastPosition), 0)
+			if err == nil {
+				bufferSize := currentFileSize - lastPosition
+				var buffer= make([]byte, bufferSize)
+				n, err := file.Read(buffer)
+				fmt.Println("Read file [", fileName, "] returned", n, "bytes and error", err)
+				tailFolders.files[fileName] = currentFileSize
+				return string(buffer)
+			}
 		}
 	}
 	return ""
 }
-
-// Path returns the absolute path to folder.
-//func (tailFolder TailFolders) Path() string {
-//	return tailFolder.folders
-//}
-
-// String returns the absolute path as string representation of this folder.
-//func (tailFolder TailFolders) String() string {
-//	return tailFolder.folders
-//}
 
 func (tailFolders TailFolders) readFiles(folder string) {
 	openFolder, err := os.Open(folder)
@@ -101,14 +94,3 @@ func (tailFolders TailFolders) readFiles(folder string) {
 		}
 	}
 }
-
-// Positions returns the last echo'd position as from and the current size of the file in the to.
-// If the file is not found it will panic.
-//func (tailFolders TailFolders) Positions(fileName string) (from uint64, to uint64) {
-//	value, ok := tailFolders.files[fileName]
-//	if ok {
-//		fmt.Printf("gotail TRACE: found file [%v] with position [%v]\n", fileName, value)
-//		return value, 0
-//	}
-//	panic(fmt.Sprintf("Did not find file [%v]", fileName))
-//}

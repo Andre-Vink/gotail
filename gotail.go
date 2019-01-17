@@ -1,3 +1,5 @@
+// Implements the gotail application that can tail folders.
+// It will tail all files in the specified folders, even new files that are newly created.
 package main
 
 import (
@@ -35,7 +37,10 @@ func main() {
 
 	fmt.Printf("gotail INFO: Tailing folders %v\n", tailFolders.Folders())
 
-	eventsChannel := tailFolders.Watch()
+	eventsChannel, err := tailFolders.Watch()
+	if err != nil {
+		fmt.Printf("gotail ERROR: Cannot watch folders. Error: [%v]", err)
+	}
 
 	watch(eventsChannel)
 }
@@ -47,19 +52,10 @@ func watch(watcher *fsnotify.Watcher) {
 		case e = <-watcher.Events:
 			handleWatchEvent(e)
 		case x := <-watcher.Errors:
-			fmt.Printf("gotail INFO: Error: [%v]\n", x)
+			fmt.Printf("gotail ERROR: %v\n", x)
 		}
 	}
 }
-
-//func addTailFolder(folderPath string) {
-//	if _, exists := tailFolders[folderPath]; exists {
-//		fmt.Printf("gotail INFO: Folder [%v] will only be tailed once!\n", folderPath)
-//	} else {
-//		tailFolder := NewTailFolders(folderPath)
-//		tailFolders[folderPath] = tailFolder
-//	}
-//}
 
 func handleWatchEvent(event fsnotify.Event) {
 	fmt.Printf("gotail INFO: Event: [%v] (name: %v, op: %v)\n", event, event.Name, event.Op)
@@ -72,24 +68,25 @@ func handleWatchEvent(event fsnotify.Event) {
 }
 
 func handleNewFile(newFile string) {
-	fmt.Println("Handle new file: ", newFile)
+	//fmt.Println("Handle new file: ", newFile)
 	tailFolders.AddFile(newFile)
 }
 
 func handleWriteToFile(writtenFile string) {
-	fmt.Println("Handle write to file: ", writtenFile)
+	//fmt.Println("Handle write to file: ", writtenFile)
 	newPart := tailFolders.NewPart(writtenFile)
-	fmt.Printf("NewPart returned [%v]\n", newPart)
+	//fmt.Printf("NewPart returned [%v]\n", newPart)
 
-	//	tailFolder := findTailFolderForFile(path)
-	//	fileName := filepath.Base(path)
-	//	from, to := tailFolder.Positions(fileName)
-	//	fmt.Printf("gotail INFO: Positions returned (%v, %v)\n", from, to)
+	tailFolder := findTailFolderForFile(writtenFile)
+	fmt.Printf("Tail folder for [%v] is [%v]\n", writtenFile, tailFolder)
+
+	fmt.Printf("%v%v%v: %v", termBlue, tailFolder, termNormal, newPart)
 }
 
-//func findTailFolderForFile(path string) TailFolders {
+func findTailFolderForFile(path string) string {
+	return filepath.Base(filepath.Dir(path))
 //	dir := filepath.Dir(path)
 //	tailFolder := tailFolders[dir]
 //	fmt.Printf("gotail INFO: Found tailfolder [%v]\n", tailFolder)
 //	return tailFolder
-//}
+}
