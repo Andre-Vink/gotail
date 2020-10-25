@@ -4,9 +4,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 const (
@@ -47,9 +48,9 @@ func main() {
 
 func watch(watcher *fsnotify.Watcher) {
 	for {
-		var e fsnotify.Event
+		// var e fsnotify.Event
 		select {
-		case e = <-watcher.Events:
+		case e := <-watcher.Events:
 			handleWatchEvent(e)
 		case x := <-watcher.Errors:
 			fmt.Printf("gotail ERROR: %v\n", x)
@@ -58,7 +59,7 @@ func watch(watcher *fsnotify.Watcher) {
 }
 
 func handleWatchEvent(event fsnotify.Event) {
-	fmt.Printf("gotail INFO: Event: [%v] (name: %v, op: %v)\n", event, event.Name, event.Op)
+	// fmt.Printf("gotail INFO: Event: [%v] (name: %v, op: %v)\n", event, event.Name, event.Op)
 	switch event.Op {
 	case fsnotify.Create:
 		handleNewFile(event.Name)
@@ -74,19 +75,21 @@ func handleNewFile(newFile string) {
 
 func handleWriteToFile(writtenFile string) {
 	//fmt.Println("Handle write to file: ", writtenFile)
-	newPart := tailFolders.NewPart(writtenFile)
+	newLines := tailFolders.NewLines(writtenFile)
 	//fmt.Printf("NewPart returned [%v]\n", newPart)
 
 	tailFolder := findTailFolderForFile(writtenFile)
-	fmt.Printf("Tail folder for [%v] is [%v]\n", writtenFile, tailFolder)
+	// fmt.Printf("Tail folder for [%v] is [%v]\n", writtenFile, tailFolder)
 
-	fmt.Printf("%v%v%v: %v", termBlue, tailFolder, termNormal, newPart)
+	for _, line := range newLines {
+		fmt.Printf("%v%v%v: %v\n", termBlue, tailFolder, termNormal, line)
+	}
 }
 
 func findTailFolderForFile(path string) string {
 	return filepath.Base(filepath.Dir(path))
-//	dir := filepath.Dir(path)
-//	tailFolder := tailFolders[dir]
-//	fmt.Printf("gotail INFO: Found tailfolder [%v]\n", tailFolder)
-//	return tailFolder
+	//	dir := filepath.Dir(path)
+	//	tailFolder := tailFolders[dir]
+	//	fmt.Printf("gotail INFO: Found tailfolder [%v]\n", tailFolder)
+	//	return tailFolder
 }

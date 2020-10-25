@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // TailFolders holds the information about the folders and their files, needed for tailing.
@@ -48,30 +50,60 @@ func (tailFolders TailFolders) Watch() (*fsnotify.Watcher, error) {
 	return watcher, err
 }
 
-// NewPart returns the new part of the file.
-func (tailFolders TailFolders) NewPart(fileName string) string {
-	lastPosition := tailFolders.files[fileName]
+// NewLines return the new lines of a file. Only full completed lines are returned, meaning lines with a newline as last character.
+func (tailFolders *TailFolders) NewLines(fileName string) []string {
 	if fileInfo, err := os.Stat(fileName); err == nil {
+		lastPosition := tailFolders.files[fileName]
 		currentFileSize := uint64(fileInfo.Size())
-		fmt.Printf("File [%v], last size [%v], current size [%v]\n", fileName, lastPosition, currentFileSize)
+		// fmt.Printf("File [%v], last size [%v], current size [%v]\n", fileName, lastPosition, currentFileSize)
 		if currentFileSize < lastPosition { // file was truncated
 			lastPosition = 0
 			tailFolders.files[fileName] = 0
 		}
+		if currentFileSize == lastPosition { // file was not changed
+			return []string{}
+		}
+
 		if file, err := os.Open(fileName); err == nil {
 			defer func() { _ = file.Close() }()
+
 			_, err := file.Seek(int64(lastPosition), 0)
 			if err == nil {
 				bufferSize := currentFileSize - lastPosition
-				var buffer= make([]byte, bufferSize)
-				n, err := file.Read(buffer)
-				fmt.Println("Read file [", fileName, "] returned", n, "bytes and error", err)
-				tailFolders.files[fileName] = currentFileSize
-				return string(buffer)
+				var buffer = make([]byte, bufferSize)
+				_ /*n*/, err := file.Read(buffer)
+				if err == nil {
+					// fmt.Println("Read file [", fileName, "] returned", n, "bytes and error", err)
+					newStringPart := string(buffer)
+					nspLength := len(newStringPart)
+					lastPosition = lastPosition + uint64(nspLength)
+
+					// fmt.Printf("[%+q] (%v)\n", newStringPart, nspLength)
+
+					newLines := strings.Split(newStringPart, "\n")
+					// fmt.Printf("New lines: %+q (%v)\n", newLines, len(newLines))
+
+					if len(newLines) > 0 {
+						lastLine := newLines[len(newLines)-1]
+						lenLastLine := len(lastLine)
+						// fmt.Printf("Last line: [%+q] (%v)\n", lastLine, lenLastLine)
+						if lenLastLine == 0 || lastLine[lenLastLine-1] != '\n' {
+							newLines = newLines[:len(newLines)-1]
+							lastPosition = lastPosition - uint64(lenLastLine)
+							// fmt.Printf("Removed last line. New lines: %+q\n", newLines)
+						}
+					}
+
+					// fmt.Printf("Nr of new lines: %v\n", len(newLines))
+					// fmt.Printf("New file size: %v\n", lastPosition)
+					tailFolders.files[fileName] = lastPosition
+					return newLines
+				}
+				return []string{}
 			}
 		}
 	}
-	return ""
+	return []string{}
 }
 
 func (tailFolders TailFolders) readFiles(folder string) {
@@ -89,8 +121,8 @@ func (tailFolders TailFolders) readFiles(folder string) {
 		if !file.IsDir() {
 			absFilePath := filepath.Join(folder, file.Name())
 			tailFolders.files[absFilePath] = uint64(file.Size())
-			fmt.Println("Adding file ", termBlue, absFilePath, termNormal, "for tracing. It is currently",
-				termBlue, tailFolders.files[absFilePath], termNormal, "long.")
+			// fmt.Println("Adding file ", termBlue, absFilePath, termNormal, "for tracing. It is currently",
+			// termBlue, tailFolders.files[absFilePath], termNormal, "long.")
 		}
 	}
 }
