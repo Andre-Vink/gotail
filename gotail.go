@@ -3,9 +3,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"unicode/utf8"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -17,11 +20,25 @@ const (
 
 var tailFolders = NewTailFolders()
 
+var hlFlag = flag.String("hl", "", "Wil highlight any part of the logging that matches this regex.")
+var hlRE *regexp.Regexp
+
 func main() {
-	args := os.Args[1:]
+	flag.Parse()
+
+	args := flag.Args()
+	fmt.Printf("Flag highlight = [%v]\n", *hlFlag)
 
 	if len(args) == 0 {
-		fmt.Println("gotail INFO: USAGE: gotail <dir1> [<dir2>] [...]")
+		fmt.Println("gotail INFO: USAGE: gotail [-hl 'regex'] <dir1> [<dir2>] [...]")
+		fmt.Println("       -hl : high light regular expression - matching parts in the tailed logging is highlighted. Optional.")
+		return
+	}
+
+	var err error
+	hlRE, err = regexp.Compile(*hlFlag)
+	if err != nil {
+		fmt.Println("gotail ERROR: high light regular expression is not a valid regular expression.")
 		return
 	}
 
@@ -82,7 +99,18 @@ func handleWriteToFile(writtenFile string) {
 	// fmt.Printf("Tail folder for [%v] is [%v]\n", writtenFile, tailFolder)
 
 	for _, line := range newLines {
-		fmt.Printf("%v%v%v: %v\n", termBlue, tailFolder, termNormal, line)
+		if utf8.ValidString(line) {
+			// add scan for hl regex and print matching parts in blue
+			if len(*hlFlag) > 0 {
+				matched := hlRE.FindAllString(line, -1)
+				i := -1
+				line = hlRE.ReplaceAllStringFunc(line, func(src string) string {
+					i = i + 1
+					return termBlue + matched[i] + termNormal
+				})
+			}
+			fmt.Printf("%v%v%v: %v\n", termBlue, tailFolder, termNormal, line)
+		}
 	}
 }
 
